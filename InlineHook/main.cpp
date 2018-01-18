@@ -158,19 +158,7 @@ SELECTOR_HEAD* selector_alloc(SELECTOR_HEAD* shadow_selector){
     return selector;
 }
 
-
-void *get_trampoline_addr(void* base) {
-    struct mach_header_64* hdr=(struct mach_header_64*)base;
-    return (void*)((pointer_t)base+sizeof(struct mach_header_64)+hdr->sizeofcmds);
-}
-
-void *get_func_base(void *addr) {
-    Dl_info di;
-    dladdr(addr,&di);
-    return di.dli_fbase;
-}
-
-void *get_gap(void *addr) {
+void *get_gap_by_func(void *addr) {
     Dl_info di;
     if(!dladdr(addr,&di)) return NULL;
     struct mach_header_64* hdr=(struct mach_header_64*)di.dli_fbase;
@@ -201,7 +189,7 @@ bool atomic_memcpy_8bytes(void *dst, void *src, int len) {
 
 bool hook64(void* func,void* new_func,void **stub_func,SELECTOR_HEAD* selector) {
     JMP_RAX asm_tmpl={.addr=(uint64_t)selector};
-    void* tmpl=get_trampoline_addr(get_func_base(func));
+    void* tmpl=get_gap_by_func(func);
     if(memcmp(tmpl,&asm_tmpl,sizeof(JMP_RAX))) {
         if(set_rwe(tmpl,sizeof(JMP_RAX))!=KERN_SUCCESS) return false;
         memcpy(tmpl,&asm_tmpl,sizeof(JMP_RAX));
